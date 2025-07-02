@@ -9,6 +9,7 @@ from ms_agent.utils.logger import logger
 
 from .llm_agent import LLMAgent
 
+
 class StreamLLMAgent(LLMAgent):
     """Agent running for llm-based tasks by stream.
 
@@ -20,7 +21,8 @@ class StreamLLMAgent(LLMAgent):
     """
     DEFAULT_SYSTEM = 'You are a helpful assistant.'
 
-    async def _step(self, messages: List[Message], tag: str) -> List[Message]: # type: ignore
+    async def _step(self, messages: List[Message],
+                    tag: str) -> List[Message]:  # type: ignore
         messages = deepcopy(messages)
         # Refine memory
         messages = await self._refine_memory(messages)
@@ -69,9 +71,8 @@ class StreamLLMAgent(LLMAgent):
             self.runtime.should_stop = True
         await self._loop_callback('after_tool_call', messages)
         yield messages
-    
-    async def run(self, inputs: Union[List[Message], str],
-                  **kwargs):
+
+    async def run(self, inputs: Union[List[Message], str], **kwargs):
         """Run the agent, mainly contains a llm calling and tool calling loop.
 
         Args:
@@ -108,8 +109,9 @@ class StreamLLMAgent(LLMAgent):
                         messages.append(
                             Message(
                                 role='assistant',
-                                content=f'Task {messages[1].content} failed, max round(20) exceeded.')
-                        )
+                                content=
+                                f'Task {messages[1].content} failed, max round(20) exceeded.'
+                            ))
                     self.runtime.should_stop = True
                     yield messages
                     break
