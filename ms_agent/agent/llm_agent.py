@@ -208,7 +208,8 @@ class LLMAgent(Agent):
             for _line in line.split('\\n'):
                 logger.info(f'[{tag}] {_line}')
 
-    async def _step(self, messages: List[Message],
+    async def _step(self,
+                    messages: List[Message],
                     tag: str,
                     is_retry=True) -> List[Message]:  # type: ignore
         messages = deepcopy(messages)
@@ -220,8 +221,9 @@ class LLMAgent(Agent):
         tools = await self.tool_manager.get_tools()
         if hasattr(self.config, 'generation_config') and getattr(
                 self.config.generation_config, 'stream', False):
-            if is_retry == False:
-                async def yield_generator(self,messages,tag):
+            if is_retry is False:
+
+                async def yield_generator(self, messages, tag):
                     self._log_output('[assistant]:', tag=tag)
                     _content = ''
                     is_first = True
@@ -240,12 +242,15 @@ class LLMAgent(Agent):
                         for tool_call in _response_message.tool_calls:
                             tool_call = deepcopy(tool_call)
                             if isinstance(tool_call['arguments'], str):
-                                tool_call['arguments'] = json.loads(tool_call['arguments'])
+                                tool_call['arguments'] = json.loads(
+                                    tool_call['arguments'])
                             self._log_output(
-                                json.dumps(tool_call, ensure_ascii=False, indent=4),
+                                json.dumps(
+                                    tool_call, ensure_ascii=False, indent=4),
                                 tag=tag)
 
-                    await self._loop_callback('after_generate_response', messages)
+                    await self._loop_callback('after_generate_response',
+                                              messages)
                     await self._loop_callback('on_tool_call', messages)
 
                     if _response_message.tool_calls:
@@ -254,6 +259,7 @@ class LLMAgent(Agent):
                         self.runtime.should_stop = True
                     await self._loop_callback('after_tool_call', messages)
                     yield messages
+
                 return yield_generator(self, messages, tag)
             else:
                 self._log_output('[assistant]:', tag=tag)
@@ -264,7 +270,7 @@ class LLMAgent(Agent):
                     sys.stdout.write(new_content)
                     sys.stdout.flush()
                     _content = _response_message.content
-                sys.stdout.write("\n")
+                sys.stdout.write('\n')
                 sys.stdout.flush()
         else:
             _response_message = self.llm.generate(messages, tools=tools)
@@ -332,7 +338,8 @@ class LLMAgent(Agent):
         save_history(
             query=query, task=self.task, config=config, messages=messages)
 
-    async def run_generator(self, messages: Union[List[Message], str], **kwargs):
+    async def run_generator(self, messages: Union[List[Message], str],
+                            **kwargs):
         """Run the agent, mainly contains a llm calling and tool calling loop.
 
         Args:
@@ -369,12 +376,12 @@ class LLMAgent(Agent):
                 if message.role != 'system':
                     self._log_output('[' + message.role + ']:', tag=self.tag)
                     self._log_output(message.content, tag=self.tag)
-            if kwargs.get("is_retry") is not None:
-                is_retry = kwargs.get("is_retry")
+            if kwargs.get('is_retry') is not None:
+                is_retry = kwargs.get('is_retry')
             else:
                 is_retry = True
             while not self.runtime.should_stop:
-                if is_retry == True:
+                if is_retry is True:
                     wrapped_step = async_retry(max_attempts=2)(self._step)
                     messages = await wrapped_step(messages, self.tag)
                     yield messages
