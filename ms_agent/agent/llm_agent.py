@@ -197,9 +197,9 @@ class LLMAgent(Agent):
             messages = await self.planer.update_plan(self.runtime, messages)
         return messages
 
-    def _handle_stream_message(self, messages: List[Message],
+    async def _handle_stream_message(self, messages: List[Message],
                                tools: List[Tool]):
-        for message in self.llm.generate(messages, tools=tools):
+        async for message in self.llm.generate(messages, tools=tools):
             yield message
 
     @staticmethod
@@ -208,6 +208,7 @@ class LLMAgent(Agent):
             for _line in line.split('\\n'):
                 logger.info(f'[{tag}] {_line}')
 
+    # @async_retry(max_attempts=2, delay=1.0)
     async def _step(self,
                     messages: List[Message],
                     tag: str,
@@ -227,7 +228,7 @@ class LLMAgent(Agent):
                     self._log_output('[assistant]:', tag=tag)
                     _content = ''
                     is_first = True
-                    for _response_message in self._handle_stream_message(
+                    async for _response_message in self._handle_stream_message(
                             messages, tools=tools):
                         if is_first:
                             messages.append(_response_message)
@@ -384,9 +385,11 @@ class LLMAgent(Agent):
                 if is_retry is True:
                     wrapped_step = async_retry(max_attempts=2)(self._step)
                     messages = await wrapped_step(messages, self.tag)
+                    # messages = await self._step(messages, self.tag)
                     yield messages
                 else:
                     yield_step = await self._step(messages, self.tag, is_retry)
+                    # wrapped_step = async_retry(max_attempts=2)(yield_step)              
                     async for messages in yield_step:
                         yield messages
                 self.runtime.round += 1
