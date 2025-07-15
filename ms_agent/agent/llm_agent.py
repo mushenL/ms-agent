@@ -15,7 +15,7 @@ from ms_agent.rag.utils import rag_mapping
 from ms_agent.tools import ToolManager
 from ms_agent.utils import async_retry
 from ms_agent.utils.logger import logger
-from omegaconf import DictConfig
+from omegaconf import DictConfig, OmegaConf
 
 from ..utils.utils import read_history, save_history
 from .base import Agent
@@ -280,7 +280,7 @@ class LLMAgent(Agent):
             messages = await self.planer.update_plan(self.runtime, messages)
         return messages
 
-    async def _handle_stream_message(self, messages: List[Message],
+    def _handle_stream_message(self, messages: List[Message],
                                      tools: List[Tool]):
         """
         Generator that yields streamed responses from the LLM.
@@ -292,7 +292,7 @@ class LLMAgent(Agent):
         Yields:
             Message: Streamed output message chunks.
         """
-        async for message in self.llm.generate(messages, tools=tools):
+        for message in self.llm.generate(messages, tools=tools):
             yield message
 
     @staticmethod
@@ -311,8 +311,7 @@ class LLMAgent(Agent):
     @async_retry(max_attempts=2, delay=1.0)
     async def _step(self,
                     messages: List[Message],
-                    tag: str,
-                    is_retry=True) -> List[Message]:  # type: ignore
+                    tag: str) -> List[Message]:  # type: ignore
         """
         Execute a single step in the agent's interaction loop.
 
@@ -349,7 +348,7 @@ class LLMAgent(Agent):
             self._log_output('[assistant]:', tag=tag)
             _content = ''
             is_first = True
-            async for _response_message in self._handle_stream_message(
+            for _response_message in self._handle_stream_message(
                     messages, tools=tools):
                 if is_first:
                     messages.append(_response_message)
@@ -359,80 +358,6 @@ class LLMAgent(Agent):
                 sys.stdout.flush()
                 _content = _response_message.content
                 yield messages
-            if _response_message.tool_calls:
-                self._log_output('[tool_calling]:', tag=tag)
-                for tool_call in _response_message.tool_calls:
-                    tool_call = deepcopy(tool_call)
-                    if isinstance(tool_call['arguments'], str):
-                        tool_call['arguments'] = json.loads(
-                            tool_call['arguments'])
-                    self._log_output(
-                        json.dumps(
-                            tool_call, ensure_ascii=False, indent=4),
-                        tag=tag)
-
-            await self._loop_callback('after_generate_response',
-                                        messages)
-            await self._loop_callback('on_tool_call', messages)
-
-            if _response_message.tool_calls:
-                messages = await self._parallel_tool_call(messages)
-            else:
-                self.runtime.should_stop = True
-            await self._loop_callback('after_tool_call', messages)
-            yield messages
-            
-            # if is_retry is False:
-
-            #     async def yield_generator(self, messages, tag):
-            #         self._log_output('[assistant]:', tag=tag)
-            #         _content = ''
-            #         is_first = True
-            #         async for _response_message in self._handle_stream_message(
-            #                 messages, tools=tools):
-            #             if is_first:
-            #                 messages.append(_response_message)
-            #                 is_first = False
-            #             new_content = _response_message.content[len(_content):]
-            #             sys.stdout.write(new_content)
-            #             sys.stdout.flush()
-            #             _content = _response_message.content
-            #             yield messages
-            #         if _response_message.tool_calls:
-            #             self._log_output('[tool_calling]:', tag=tag)
-            #             for tool_call in _response_message.tool_calls:
-            #                 tool_call = deepcopy(tool_call)
-            #                 if isinstance(tool_call['arguments'], str):
-            #                     tool_call['arguments'] = json.loads(
-            #                         tool_call['arguments'])
-            #                 self._log_output(
-            #                     json.dumps(
-            #                         tool_call, ensure_ascii=False, indent=4),
-            #                     tag=tag)
-
-            #         await self._loop_callback('after_generate_response',
-            #                                   messages)
-            #         await self._loop_callback('on_tool_call', messages)
-
-            #         if _response_message.tool_calls:
-            #             messages = await self._parallel_tool_call(messages)
-            #         else:
-            #             self.runtime.should_stop = True
-            #         await self._loop_callback('after_tool_call', messages)
-            #         yield messages
-
-            #     return yield_generator(self, messages, tag)
-            # else:
-            #     self._log_output('[assistant]:', tag=tag)
-            #     _content = ''
-            #     async for _response_message in self._handle_stream_message(
-            #             messages, tools=tools):
-            #         new_content = _response_message.content[len(_content):]
-            #         sys.stdout.write(new_content)
-            #         sys.stdout.flush()
-            #         _content = _response_message.content
-            #     sys.stdout.write('\n')
-            #     sys.stdout.flush()
         else:
             _response_message = self.llm.generate(messages, tools=tools)
             if _response_message.content:
@@ -479,6 +404,8 @@ class LLMAgent(Agent):
         Returns:
             Tuple[DictConfig, Runtime, List[Message]]: Updated config, runtime, and message history.
         """
+        print(f'self.load_cache: {self.load_cache}')
+        print(messages)
         if isinstance(messages, str):
             query = messages
         else:
@@ -517,7 +444,7 @@ class LLMAgent(Agent):
             config=config,
             messages=messages)
 
-    async def run_generator(self, messages: Union[List[Message], str],
+    async def _run(self, messages: Union[List[Message], str],
                             **kwargs):
         """Run the agent, mainly contains a llm calling and tool calling loop.
 
@@ -539,9 +466,7 @@ class LLMAgent(Agent):
             await self._prepare_planer()
             await self._prepare_rag()
             self.runtime.tag = self.tag
-            # load_cache = kwargs.get('load_cache', False)
-            # save_cache = kwargs.get('save_cache', False)
-            # if load_cache:
+
             self.config, self.runtime, messages = self._read_history(
                 messages, **kwargs)
 
@@ -557,22 +482,8 @@ class LLMAgent(Agent):
                 if message.role != 'system':
                     self._log_output('[' + message.role + ']:', tag=self.tag)
                     self._log_output(message.content, tag=self.tag)
-            if kwargs.get('is_retry') is not None:
-                is_retry = kwargs.get('is_retry')
-            else:
-                is_retry = True
             while not self.runtime.should_stop:
-                # if is_retry is True:
-                #     wrapped_step = async_retry(
-                #         max_attempts=2, is_yield=False)(
-                #             self._step)
-                #     messages = await wrapped_step(messages, self.tag)
-                #     yield messages
-                # else:
-                #     yield_step = await self._step(messages, self.tag, is_retry)
-                #     async for messages in yield_step:
-                #         yield messages
-                yield_step = self._step(messages, self.tag, is_retry)
+                yield_step = self._step(messages, self.tag)
                 async for messages in yield_step:
                      yield messages
                 self.runtime.round += 1
@@ -602,6 +513,17 @@ class LLMAgent(Agent):
 
     async def run(self, messages: Union[List[Message], str],
                   **kwargs) -> List[Message]:
-        async for messages in self.run_generator(messages=messages, **kwargs):
-            logger.info(str(messages[-1]))
-        return messages
+        stream = kwargs.get('stream', False)
+        if stream:
+            OmegaConf.update(self.config, "generation_config.stream", True, merge=True)
+
+        if stream:
+            async def stream_generator():
+                async for chunk in self._run(messages=messages, **kwargs):
+                    yield chunk
+            return stream_generator()
+        else:
+            res = None
+            async for chunk in self._run(messages=messages, **kwargs):
+                res = chunk
+            return res

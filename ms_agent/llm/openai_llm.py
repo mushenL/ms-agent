@@ -70,7 +70,7 @@ class OpenAI(LLM):
             tools = None
         return tools
 
-    @async_retry(max_attempts=3, delay=1.0)
+    @retry(max_attempts=3, delay=1.0)
     def generate(self,
                  messages: List[Message],
                  tools: Optional[List[Tool]] = None,

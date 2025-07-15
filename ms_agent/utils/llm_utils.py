@@ -66,7 +66,7 @@ def async_retry(max_attempts: int = 3,
 
                 for attempt in range(1, max_attempts + 1):
                     try:
-                        for item in func(*args, **kwargs):
+                        async for item in func(*args, **kwargs):
                             yield item
                         return
                     except exceptions as e:
