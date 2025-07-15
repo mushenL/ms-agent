@@ -281,7 +281,7 @@ class LLMAgent(Agent):
         return messages
 
     async def _handle_stream_message(self, messages: List[Message],
-                               tools: List[Tool]):
+                                     tools: List[Tool]):
         """
         Generator that yields streamed responses from the LLM.
 
@@ -389,7 +389,7 @@ class LLMAgent(Agent):
             else:
                 self._log_output('[assistant]:', tag=tag)
                 _content = ''
-                for _response_message in self._handle_stream_message(
+                async for _response_message in self._handle_stream_message(
                         messages, tools=tools):
                     new_content = _response_message.content[len(_content):]
                     sys.stdout.write(new_content)
@@ -527,13 +527,13 @@ class LLMAgent(Agent):
                 is_retry = True
             while not self.runtime.should_stop:
                 if is_retry is True:
-                    wrapped_step = async_retry(max_attempts=2)(self._step)
+                    wrapped_step = async_retry(
+                        max_attempts=2, is_yield=False)(
+                            self._step)
                     messages = await wrapped_step(messages, self.tag)
-                    # messages = await self._step(messages, self.tag)
                     yield messages
                 else:
                     yield_step = await self._step(messages, self.tag, is_retry)
-                    # wrapped_step = async_retry(max_attempts=2)(yield_step)              
                     async for messages in yield_step:
                         yield messages
                 self.runtime.round += 1
