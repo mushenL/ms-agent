@@ -281,7 +281,7 @@ class LLMAgent(Agent):
         return messages
 
     def _handle_stream_message(self, messages: List[Message],
-                                     tools: List[Tool]):
+                               tools: List[Tool]):
         """
         Generator that yields streamed responses from the LLM.
 
@@ -309,8 +309,7 @@ class LLMAgent(Agent):
                 logger.info(f'[{tag}] {_line}')
 
     @async_retry(max_attempts=2, delay=1.0)
-    async def _step(self,
-                    messages: List[Message],
+    async def _step(self, messages: List[Message],
                     tag: str) -> List[Message]:  # type: ignore
         """
         Execute a single step in the agent's interaction loop.
@@ -449,8 +448,7 @@ class LLMAgent(Agent):
             config=config,
             messages=messages)
 
-    async def _run(self, messages: Union[List[Message], str],
-                            **kwargs):
+    async def _run(self, messages: Union[List[Message], str], **kwargs):
         """Run the agent, mainly contains a llm calling and tool calling loop.
 
         Args:
@@ -490,7 +488,7 @@ class LLMAgent(Agent):
             while not self.runtime.should_stop:
                 yield_step = self._step(messages, self.tag)
                 async for messages in yield_step:
-                     yield messages
+                    yield messages
                 self.runtime.round += 1
                 # +1 means the next round the assistant may give a conclusion
                 if self.runtime.round >= self.max_chat_round + 1:
@@ -520,12 +518,15 @@ class LLMAgent(Agent):
                   **kwargs) -> List[Message]:
         stream = kwargs.get('stream', False)
         if stream:
-            OmegaConf.update(self.config, "generation_config.stream", True, merge=True)
+            OmegaConf.update(
+                self.config, 'generation_config.stream', True, merge=True)
 
         if stream:
+
             async def stream_generator():
                 async for chunk in self._run(messages=messages, **kwargs):
                     yield chunk
+
             return stream_generator()
         else:
             res = None
