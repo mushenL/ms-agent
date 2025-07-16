@@ -346,7 +346,8 @@ class LLMAgent(Agent):
                 self.config.generation_config, 'stream', False):
             self._log_output('[assistant]:', tag=tag)
             _content = ''
-            for _response_message in self._handle_stream_message(
+            is_first = True
+            async for _response_message in self._handle_stream_message(
                     messages, tools=tools):
                 if is_first:
                     messages.append(_response_message)
