@@ -412,8 +412,6 @@ class LLMAgent(Agent):
         Returns:
             Tuple[DictConfig, Runtime, List[Message]]: Updated config, runtime, and message history.
         """
-        print(f'self.load_cache: {self.load_cache}')
-        print(messages)
         if isinstance(messages, str):
             query = messages
         else:
@@ -506,7 +504,6 @@ class LLMAgent(Agent):
                     self.runtime.should_stop = True
                     yield messages
                 # save history
-                # if save_cache:
                 self._save_history(messages, **kwargs)
 
             await self._loop_callback('on_task_end', messages)
