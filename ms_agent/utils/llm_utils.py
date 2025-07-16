@@ -51,6 +51,7 @@ def retry(max_attempts: int = 3,
 def async_retry(max_attempts: int = 3,
                 delay: float = 1.0,
                 backoff_factor: float = 2.0,
+                async_fun: bool = True,
                 exceptions: Union[Type[Exception], Tuple[Type[Exception],
                                                          ...]] = Exception):
     """Retry doing something"""
@@ -64,8 +65,12 @@ def async_retry(max_attempts: int = 3,
 
             for attempt in range(1, max_attempts + 1):
                 try:
-                    async for item in func(*args, **kwargs):
-                        yield item
+                    if async_fun:
+                        async for item in func(*args, **kwargs):
+                            yield item
+                    else:
+                        for item in func(*args, **kwargs):
+                            yield item
                     return
                 except exceptions as e:
                     last_exception = e

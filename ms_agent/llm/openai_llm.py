@@ -5,7 +5,7 @@ from typing import Any, Dict, Generator, Iterable, List, Optional
 
 from ms_agent.llm import LLM
 from ms_agent.llm.utils import Message, Tool, ToolCall
-from ms_agent.utils import assert_package_exist, get_logger, retry
+from ms_agent.utils import assert_package_exist, async_retry, get_logger
 from omegaconf import DictConfig, OmegaConf
 from openai.types.chat.chat_completion_message_tool_call import (
     ChatCompletionMessageToolCall, Function)
@@ -72,7 +72,7 @@ class OpenAI(LLM):
             tools = None
         return tools
 
-    @retry(max_attempts=3, delay=1.0)
+    @async_retry(max_attempts=3, delay=1.0, async_fun=False)
     def generate(self,
                  messages: List[Message],
                  tools: Optional[List[Tool]] = None,

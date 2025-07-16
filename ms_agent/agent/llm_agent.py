@@ -280,8 +280,8 @@ class LLMAgent(Agent):
             messages = await self.planer.update_plan(self.runtime, messages)
         return messages
 
-    def _handle_stream_message(self, messages: List[Message],
-                               tools: List[Tool]):
+    async def _handle_stream_message(self, messages: List[Message],
+                                     tools: List[Tool]):
         """
         Generator that yields streamed responses from the LLM.
 
@@ -292,7 +292,7 @@ class LLMAgent(Agent):
         Yields:
             Message: Streamed output message chunks.
         """
-        for message in self.llm.generate(messages, tools=tools):
+        async for message in self.llm.generate(messages, tools=tools):
             yield message
 
     @staticmethod
@@ -347,7 +347,7 @@ class LLMAgent(Agent):
             self._log_output('[assistant]:', tag=tag)
             _content = ''
             is_first = True
-            for _response_message in self._handle_stream_message(
+            async for _response_message in self._handle_stream_message(
                     messages, tools=tools):
                 if is_first:
                     messages.append(_response_message)
