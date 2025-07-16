@@ -359,6 +359,7 @@ class LLMAgent(Agent):
                 sys.stdout.write(new_content)
                 sys.stdout.flush()
                 _content = _response_message.content
+                messages[-1] = _response_message
                 yield messages
             sys.stdout.write('\n')
         else:
