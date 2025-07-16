@@ -24,6 +24,9 @@ from .plan.base import Planer
 from .plan.utils import planer_mapping
 from .runtime import Runtime
 
+DEFAULT_YAML = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), 'agent.yaml')
+
 
 class LLMAgent(Agent):
     """
@@ -48,7 +51,7 @@ class LLMAgent(Agent):
     DEFAULT_SYSTEM = 'You are a helpful assistant.'
 
     def __init__(self,
-                 config_dir_or_id: Optional[str] = None,
+                 config_dir_or_id: Optional[str] = DEFAULT_YAML,
                  config: Optional[DictConfig] = None,
                  env: Optional[Dict[str, str]] = None,
                  **kwargs):
