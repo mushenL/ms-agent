@@ -316,10 +316,17 @@ class LLMAgent(Agent):
                 raise ValueError(
                     f"Function name too long: {fun_name} in {original_name}, can't truncate server name"
                 )
-            # 截断服务名并添加 ...
+            # Truncate server name and append '...'
             truncated_server = server_name[:max_server_len] + '...'
             new_name = f'{truncated_server}:{fun_name}'
-            # 创建映射关系
+            # Create mapping relationship
+            if new_name in self.tool_name_map and self.tool_name_map[
+                    new_name] != original_name:
+                raise ValueError(
+                    f"Tool name truncation collision: '{original_name}' and "
+                    f"'{self.tool_name_map[new_name]}' both truncate to '{new_name}'. "
+                    'Please provide more distinct tool names to avoid this issue.'
+                )
             self.tool_name_map[new_name] = original_name
 
             tool['tool_name'] = new_name
@@ -400,8 +407,12 @@ class LLMAgent(Agent):
             self._log_output('[tool_calling]:', tag=tag)
             for tool_call in _response_message.tool_calls:
                 if len(self.tool_name_map) > 0:
+                    # Toolname restore
                     tool_call['tool_name'] = self.tool_name_map.get(
                         tool_call['tool_name'], tool_call['tool_name'])
+                    for tool in tools:
+                        tool['tool_name'] = self.tool_name_map.get(
+                            tool['tool_name'], tool['tool_name'])
                 tool_call = deepcopy(tool_call)
                 if isinstance(tool_call['arguments'], str):
                     tool_call['arguments'] = json.loads(tool_call['arguments'])
